@@ -1,0 +1,15 @@
+{
+  "name": "quantum-animal-shogi-wasm",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "quantum_animal_shogi_wasm_bg.wasm",
+    "quantum_animal_shogi_wasm.js",
+    "quantum_animal_shogi_wasm.d.ts"
+  ],
+  "main": "quantum_animal_shogi_wasm.js",
+  "types": "quantum_animal_shogi_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

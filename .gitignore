@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Production builds and test coverage
+dist/
+coverage/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Tool caches and generated metadata
+.eslintcache
+.vite/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
