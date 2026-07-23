@@ -1,12 +1,60 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
+import { loadEnvFile } from "node:process";
+import { fileURLToPath } from "node:url";
 
 import mysql from "mysql2/promise";
 
 const migrationDirectory = new URL("./migrations/", import.meta.url);
+const environmentFile = fileURLToPath(new URL("../.env", import.meta.url));
+
+try {
+  loadEnvFile(environmentFile);
+} catch (error) {
+  if (error?.code !== "ENOENT") {
+    throw error;
+  }
+}
 
 const isEnabled = (value) =>
   ["1", "true", "yes"].includes(String(value ?? "").toLowerCase());
+
+export const recoverMaterializedTrainingMigration = async (
+  pool,
+  fileName,
+  checksum,
+) => {
+  if (fileName !== "004_training_data_integrity.sql") {
+    return false;
+  }
+  const [rows] = await pool.query(`
+    SELECT
+      (SELECT COUNT(*) FROM information_schema.tables
+       WHERE table_schema = DATABASE()
+         AND table_name = 'dataset_export_items') AS exportTableCount,
+      (SELECT COUNT(*) FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+         AND table_name = 'matches'
+         AND column_name = 'quality_status') AS qualityColumnCount,
+      (SELECT COUNT(*) FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+         AND table_name = 'match_moves'
+         AND column_name = 'transition_checksum') AS checksumColumnCount
+  `);
+  const materialized = rows[0];
+  if (
+    Number(materialized?.exportTableCount) !== 1 ||
+    Number(materialized?.qualityColumnCount) !== 1 ||
+    Number(materialized?.checksumColumnCount) !== 1
+  ) {
+    return false;
+  }
+  await pool.execute(
+    "INSERT INTO schema_migrations (version, checksum) VALUES (?, ?)",
+    [fileName, checksum],
+  );
+  return true;
+};
 
 export const databaseConfigFromEnvironment = (environment = process.env) => {
   const values = {
@@ -74,6 +122,10 @@ const applyMigrations = async (pool) => {
       if (rows[0].checksum !== checksum) {
         throw new Error(`Applied migration was modified: ${fileName}`);
       }
+      continue;
+    }
+
+    if (await recoverMaterializedTrainingMigration(pool, fileName, checksum)) {
       continue;
     }
 

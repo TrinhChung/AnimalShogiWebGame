@@ -5,12 +5,21 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 
+import {
+  BenchmarkRepository,
+  emptyBenchmarkReport,
+} from "./benchmark_repository.mjs";
+import {
+  encodeProtocolAction,
+  trajectoryContract,
+} from "../src/game/trajectory_contract.mjs";
 import { createDatabaseFromEnvironment } from "./database.mjs";
 import { MatchRepository } from "./match_repository.mjs";
+import { TrainingDataRepository } from "./training_data_repository.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
 const defaultPort = 8766;
-const maximumRequestBytes = 512 * 1024;
+const maximumRequestBytes = 4 * 1024 * 1024;
 
 export const nativeBotDefinitions = [
   {
@@ -89,6 +98,8 @@ const publicBot = (definition) => {
     kind: "native",
     version: definition.version,
     versionKey: `${definition.version}:${digest}`,
+    artifactDigest: digest,
+    policyKey: "native-json-protocol-v1",
   };
 };
 
@@ -119,6 +130,12 @@ const validateBotDefinition = (value) => {
   if (!/^[a-zA-Z0-9._:-]{1,255}$/.test(value.versionKey ?? "")) {
     throw new Error("bot version key is invalid");
   }
+  if (!/^[0-9a-f]{64}$/.test(value.artifactDigest ?? "")) {
+    throw new Error("bot artifact digest is invalid");
+  }
+  if (!/^[a-zA-Z0-9._:-]{1,120}$/.test(value.policyKey ?? "")) {
+    throw new Error("bot policy key is invalid");
+  }
   return {
     id: validateIdentifier(value.id, "bot id"),
     name: String(value.name ?? "").slice(0, 255),
@@ -126,12 +143,24 @@ const validateBotDefinition = (value) => {
     kind: validateIdentifier(value.kind, "bot kind"),
     version: validateIdentifier(value.version, "bot version"),
     versionKey: value.versionKey,
+    artifactDigest: value.artifactDigest,
+    policyKey: value.policyKey,
     depth:
       value.depth === undefined
         ? undefined
         : validateInteger(value.depth, "bot depth", 1, 100),
   };
 };
+
+const validateObject = (value, fieldName) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${fieldName} is invalid`);
+  }
+  return value;
+};
+
+const validateOptionalObject = (value, fieldName) =>
+  value === undefined ? {} : validateObject(value, fieldName);
 
 const validateStateSnapshot = (value) => {
   if (
@@ -336,7 +365,11 @@ const readJson = (request) => {
   });
 };
 
-export const createNativeBotBridge = ({ matchRepository = null } = {}) => {
+export const createNativeBotBridge = ({
+  matchRepository = null,
+  benchmarkRepository = null,
+  trainingDataRepository = null,
+} = {}) => {
   const botProcesses = new Map();
 
   const repository = () => {
@@ -344,6 +377,20 @@ export const createNativeBotBridge = ({ matchRepository = null } = {}) => {
       throw new HttpError(503, "MySQL match storage is unavailable");
     }
     return matchRepository;
+  };
+
+  const benchmarks = () => {
+    if (!benchmarkRepository) {
+      throw new HttpError(503, "MySQL benchmark storage is unavailable");
+    }
+    return benchmarkRepository;
+  };
+
+  const trainingData = () => {
+    if (!trainingDataRepository) {
+      throw new HttpError(503, "MySQL training-data storage is unavailable");
+    }
+    return trainingDataRepository;
   };
 
   const closeSession = (sessionId) => {
@@ -393,18 +440,194 @@ export const createNativeBotBridge = ({ matchRepository = null } = {}) => {
         return;
       }
 
+      if (request.method === "GET" && request.url === "/api/ratings") {
+        sendJson(response, 200, await repository().listRatings());
+        return;
+      }
+
+      if (
+        request.method === "POST" &&
+        request.url === "/api/ratings/register"
+      ) {
+        const body = await readJson(request);
+        if (
+          !Array.isArray(body.bots) ||
+          body.bots.length < 1 ||
+          body.bots.length > 100
+        ) {
+          throw new Error("bots must contain between 1 and 100 definitions");
+        }
+        const ratings = await repository().registerBots(
+          body.bots.map(validateBotDefinition),
+        );
+        sendJson(response, 200, ratings);
+        return;
+      }
+
       if (request.method === "GET" && request.url === "/api/report") {
-        sendJson(response, 200, await repository().reportData());
+        const report = await repository().reportData();
+        const benchmarkReport = benchmarkRepository
+          ? await benchmarkRepository.reportData()
+          : emptyBenchmarkReport();
+        sendJson(response, 200, { ...report, benchmarks: benchmarkReport });
+        return;
+      }
+
+      if (request.method === "GET" && request.url === "/api/benchmarks") {
+        sendJson(response, 200, await benchmarks().reportData());
+        return;
+      }
+
+      if (request.method === "POST" && request.url === "/api/benchmarks/runs") {
+        const body = await readJson(request);
+        const result = await benchmarks().recordRun(body);
+        sendJson(response, result.created ? 201 : 200, result);
+        return;
+      }
+
+      if (
+        request.method === "GET" &&
+        request.url === "/api/training-data/summary"
+      ) {
+        sendJson(response, 200, await trainingData().summary());
+        return;
+      }
+
+      if (
+        request.method === "POST" &&
+        request.url === "/api/training-data/validate"
+      ) {
+        const body = await readJson(request);
+        sendJson(
+          response,
+          200,
+          await trainingData().validatePending(
+            validateInteger(body.limit ?? 100, "validation limit", 1, 1_000),
+          ),
+        );
+        return;
+      }
+
+      if (
+        request.method === "POST" &&
+        request.url === "/api/training-data/labels"
+      ) {
+        const body = await readJson(request);
+        sendJson(response, 201, await trainingData().addLabel(body));
+        return;
+      }
+
+      if (
+        request.method === "POST" &&
+        request.url === "/api/tournaments/start"
+      ) {
+        const body = await readJson(request);
+        if (
+          !Array.isArray(body.participants) ||
+          body.participants.length < 2 ||
+          body.participants.length > 100
+        ) {
+          throw new Error("participants must contain between 2 and 100 bots");
+        }
+        const result = await repository().startTournament({
+          name: String(body.name ?? "").slice(0, 255),
+          participants: body.participants.map(validateBotDefinition),
+          gamesPerPairing: validateInteger(
+            body.gamesPerPairing,
+            "gamesPerPairing",
+            1,
+            20,
+          ),
+          settings: body.settings ?? {},
+        });
+        sendJson(response, 201, result);
+        return;
+      }
+
+      const startTournamentRound = request.url?.match(
+        /^\/api\/tournaments\/([a-zA-Z0-9-]+)\/rounds\/start$/,
+      );
+      if (request.method === "POST" && startTournamentRound) {
+        const result = await repository().startTournamentRound(
+          validateIdentifier(startTournamentRound[1], "tournament id"),
+        );
+        sendJson(response, 201, result);
+        return;
+      }
+
+      const finishTournamentPairing = request.url?.match(
+        /^\/api\/tournaments\/([a-zA-Z0-9-]+)\/pairings\/([a-zA-Z0-9-]+)\/finish$/,
+      );
+      if (request.method === "POST" && finishTournamentPairing) {
+        const body = await readJson(request);
+        const result = await repository().finishTournamentPairing(
+          validateIdentifier(finishTournamentPairing[1], "tournament id"),
+          validateIdentifier(finishTournamentPairing[2], "pairing id"),
+          {
+            winnerEntryId: validateIdentifier(
+              body.winnerEntryId,
+              "winner entry id",
+            ),
+            entryOneScore: Number(body.entryOneScore),
+            entryTwoScore: Number(body.entryTwoScore),
+            advanceReason: body.advanceReason,
+          },
+        );
+        sendJson(response, 200, result);
+        return;
+      }
+
+      const finishTournament = request.url?.match(
+        /^\/api\/tournaments\/([a-zA-Z0-9-]+)\/finish$/,
+      );
+      if (request.method === "POST" && finishTournament) {
+        const body = await readJson(request);
+        const result = await repository().finishTournament(
+          validateIdentifier(finishTournament[1], "tournament id"),
+          validateIdentifier(body.championEntryId, "champion entry id"),
+        );
+        sendJson(response, 200, result);
+        return;
+      }
+
+      const stopTournament = request.url?.match(
+        /^\/api\/tournaments\/([a-zA-Z0-9-]+)\/stop$/,
+      );
+      if (request.method === "POST" && stopTournament) {
+        await repository().stopTournament(
+          validateIdentifier(stopTournament[1], "tournament id"),
+        );
+        sendJson(response, 200, { ok: true });
         return;
       }
 
       if (request.method === "POST" && request.url === "/api/series/start") {
         const body = await readJson(request);
+        if (!new Set(["engine-vs-engine", "human-vs-engine"]).has(body.mode)) {
+          throw new Error("series mode is invalid");
+        }
         const result = await repository().startSeries({
           botOne: validateBotDefinition(body.botOne),
           botTwo: validateBotDefinition(body.botTwo),
           repeatCount: validateInteger(body.repeatCount, "repeatCount", 1, 500),
-          settings: body.settings ?? {},
+          mode: body.mode,
+          firstSeat: validateInteger(body.firstSeat ?? 0, "firstSeat", 0, 1),
+          tournamentPairingId: body.tournamentPairingId
+            ? validateIdentifier(
+                body.tournamentPairingId,
+                "tournament pairing id",
+              )
+            : null,
+          tournamentGameIndex:
+            body.tournamentGameIndex === undefined
+              ? null
+              : validateInteger(
+                  body.tournamentGameIndex,
+                  "tournamentGameIndex",
+                  1,
+                  20,
+                ),
+          settings: validateOptionalObject(body.settings, "series settings"),
         });
         sendJson(response, 201, result);
         return;
@@ -415,13 +638,17 @@ export const createNativeBotBridge = ({ matchRepository = null } = {}) => {
       );
       if (request.method === "POST" && finishSeriesMatch) {
         const body = await readJson(request);
-        const status = ["completed", "stopped", "failed"].includes(body.status)
-          ? body.status
-          : "stopped";
-        await repository().finishSeries(
+        if (!new Set(["completed", "stopped", "failed"]).has(body.status)) {
+          throw new Error("series status is invalid");
+        }
+        const status = body.status;
+        const finished = await repository().finishSeries(
           validateIdentifier(finishSeriesMatch[1], "series id"),
           status,
         );
+        if (!finished) {
+          throw new HttpError(409, "series is unavailable or incomplete");
+        }
         sendJson(response, 200, { ok: true });
         return;
       }
@@ -431,7 +658,40 @@ export const createNativeBotBridge = ({ matchRepository = null } = {}) => {
         const result = await repository().startMatch({
           seriesId: validateIdentifier(body.seriesId, "series id"),
           gameIndex: validateInteger(body.gameIndex, "gameIndex", 1, 500),
-          settings: body.settings ?? {},
+          settings: validateOptionalObject(body.settings, "match settings"),
+          trajectory: {
+            schemaVersion: validateInteger(
+              body.trajectory?.schemaVersion,
+              "trajectory schemaVersion",
+              trajectoryContract.schemaVersion,
+              trajectoryContract.schemaVersion,
+            ),
+            dataSource: validateIdentifier(
+              body.trajectory?.dataSource,
+              "trajectory dataSource",
+            ),
+            recorderVersion: validateIdentifier(
+              body.trajectory?.recorderVersion,
+              "trajectory recorderVersion",
+            ),
+            recorderBuildDigest: String(
+              body.trajectory?.recorderBuildDigest ?? "",
+            ),
+            observationEncoding: String(
+              body.trajectory?.observationEncoding ?? "",
+            ),
+            actionEncoding: String(body.trajectory?.actionEncoding ?? ""),
+            stateEncoding: String(body.trajectory?.stateEncoding ?? ""),
+            rewardEncoding: String(body.trajectory?.rewardEncoding ?? ""),
+            rulesetDigest: String(body.trajectory?.rulesetDigest ?? ""),
+            rngSeed: validateInteger(
+              body.trajectory?.rngSeed,
+              "trajectory rngSeed",
+              0,
+              0xffff_ffff,
+            ),
+            initialState: validateStateSnapshot(body.trajectory?.initialState),
+          },
         });
         sendJson(response, 201, result);
         return;
@@ -447,38 +707,100 @@ export const createNativeBotBridge = ({ matchRepository = null } = {}) => {
           actionMask: body.actionMask,
           turn: body.observationTurn,
         });
+        const source = validateInteger(body.source, "source", 0, 19);
+        const destination = validateInteger(
+          body.destination,
+          "destination",
+          0,
+          11,
+        );
+        const protocolAction = validateInteger(
+          body.protocolAction,
+          "protocolAction",
+          0,
+          239,
+        );
+        if (
+          encodeProtocolAction([source, destination]) !== protocolAction ||
+          observation.action_mask[protocolAction] !== 1
+        ) {
+          throw new Error("action is inconsistent with the legal mask");
+        }
+        if (typeof body.isTerminal !== "boolean") {
+          throw new Error("isTerminal is invalid");
+        }
+        const outcomeAfter = [
+          "player-one-win",
+          "player-two-win",
+          "draw",
+        ].includes(body.outcomeAfter)
+          ? body.outcomeAfter
+          : null;
+        const terminalReasonKey = ["try", "catch", "max-turn-draw"].includes(
+          body.terminalReasonKey,
+        )
+          ? body.terminalReasonKey
+          : null;
+        if (
+          (body.isTerminal && (!outcomeAfter || !terminalReasonKey)) ||
+          (!body.isTerminal && (outcomeAfter || terminalReasonKey))
+        ) {
+          throw new Error("terminal labels are invalid");
+        }
+        if (
+          !Number.isFinite(body.rewardAfter) ||
+          body.rewardAfter < -1 ||
+          body.rewardAfter > 1 ||
+          body.rewardPerspective !== "actor"
+        ) {
+          throw new Error("reward label is invalid");
+        }
+        const qualityFlags = body.qualityFlags ?? [];
+        if (
+          !Array.isArray(qualityFlags) ||
+          new Set(qualityFlags).size !== qualityFlags.length ||
+          !qualityFlags.every(
+            (item) =>
+              typeof item === "string" &&
+              /^[a-z0-9][a-z0-9._:-]{0,119}$/.test(item),
+          )
+        ) {
+          throw new Error("qualityFlags is invalid");
+        }
         await repository().recordMove(
           validateIdentifier(recordMoveMatch[1], "match id"),
           {
             ply: validateInteger(body.ply, "ply", 1, 256),
             seat: validateInteger(body.seat, "seat", 0, 1),
-            source: validateInteger(body.source, "source", 0, 19),
-            destination: validateInteger(
-              body.destination,
-              "destination",
-              0,
-              11,
-            ),
-            protocolAction: validateInteger(
-              body.protocolAction,
-              "protocolAction",
-              0,
-              239,
-            ),
-            thinkTimeMs: validateInteger(
-              body.thinkTimeMs,
-              "thinkTimeMs",
-              0,
-              3_600_000,
-            ),
+            source,
+            destination,
+            protocolAction,
+            thinkTimeMs:
+              body.thinkTimeMs === null
+                ? null
+                : validateInteger(
+                    body.thinkTimeMs,
+                    "thinkTimeMs",
+                    0,
+                    3_600_000,
+                  ),
             observation: observation.observation,
             actionMask: observation.action_mask,
+            observationTurn: observation.turn,
+            stateBefore: validateStateSnapshot(body.stateBefore),
             stateAfter: validateStateSnapshot(body.stateAfter),
-            rewardAfter: Number.isFinite(body.rewardAfter)
-              ? body.rewardAfter
-              : null,
-            isTerminal: Boolean(body.isTerminal),
-            metadata: body.metadata ?? {},
+            rewardAfter: body.rewardAfter,
+            rewardPerspective: body.rewardPerspective,
+            outcomeAfter,
+            isTerminal: body.isTerminal,
+            terminalReasonKey,
+            actorKind: validateIdentifier(body.actorKind, "actorKind"),
+            policyMetadata: validateOptionalObject(
+              body.policyMetadata,
+              "policyMetadata",
+            ),
+            qualityFlags,
+            metadata: validateOptionalObject(body.metadata, "move metadata"),
           },
         );
         sendJson(response, 201, { ok: true });
@@ -490,32 +812,37 @@ export const createNativeBotBridge = ({ matchRepository = null } = {}) => {
       );
       if (request.method === "POST" && finishMatch) {
         const body = await readJson(request);
-        const status = ["completed", "stopped", "failed"].includes(body.status)
-          ? body.status
-          : "failed";
+        if (!new Set(["completed", "stopped", "failed"]).has(body.status)) {
+          throw new Error("match status is invalid");
+        }
+        const status = body.status;
         const outcome = ["player-one-win", "player-two-win", "draw"].includes(
           body.outcome,
         )
           ? body.outcome
           : null;
-        await repository().finishMatch(
+        const finished = await repository().finishMatch(
           validateIdentifier(finishMatch[1], "match id"),
           {
             status,
             outcome,
-            terminationReason:
-              String(body.terminationReason ?? "").slice(0, 100) || null,
-            botOneReward: Number.isFinite(body.botOneReward)
-              ? body.botOneReward
+            terminationReason: [
+              "try",
+              "catch",
+              "max-turn-draw",
+              "stopped",
+              "failed",
+            ].includes(body.terminationReason)
+              ? body.terminationReason
               : null,
-            botTwoReward: Number.isFinite(body.botTwoReward)
-              ? body.botTwoReward
-              : null,
-            metadata: body.metadata ?? {},
+            metadata: validateOptionalObject(body.metadata, "match metadata"),
             errorMessage:
               String(body.errorMessage ?? "").slice(0, 8_000) || null,
           },
         );
+        if (!finished) {
+          throw new HttpError(409, "match is unavailable or already finished");
+        }
         sendJson(response, 200, { ok: true });
         return;
       }
@@ -576,6 +903,16 @@ export const createNativeBotBridge = ({ matchRepository = null } = {}) => {
 
       sendJson(response, 404, { error: "not found" });
     } catch (error) {
+      if (
+        request.method === "POST" &&
+        request.url === "/api/action" &&
+        error instanceof Error &&
+        error.message.endsWith(" was stopped")
+      ) {
+        response.writeHead(204, { "cache-control": "no-store" });
+        response.end();
+        return;
+      }
       sendJson(response, error instanceof HttpError ? error.status : 400, {
         error: error instanceof Error ? error.message : "request failed",
       });
@@ -607,15 +944,28 @@ if (
     const port = parsePort();
     const database = await createDatabaseFromEnvironment();
     const matchRepository = database ? new MatchRepository(database) : null;
-    const { server, closeAll } = createNativeBotBridge({ matchRepository });
-    const shutdown = () => {
-      closeAll();
-      server.close(async () => {
-        if (database) {
-          await database.end();
-        }
+    const benchmarkRepository = database
+      ? new BenchmarkRepository(database)
+      : null;
+    const trainingDataRepository = database
+      ? new TrainingDataRepository(database)
+      : null;
+    if (matchRepository) {
+      await matchRepository.initializeRatings();
+    }
+    const { server, closeAll } = createNativeBotBridge({
+      matchRepository,
+      benchmarkRepository,
+      trainingDataRepository,
+    });
+    server.once("close", () => {
+      void (database ? database.end() : Promise.resolve()).finally(() => {
         process.exit(0);
       });
+    });
+    const shutdown = () => {
+      closeAll();
+      server.close();
     };
 
     process.once("SIGINT", shutdown);
@@ -623,7 +973,7 @@ if (
     server.listen(port, "127.0.0.1", () => {
       console.log(`Native bot bridge: http://127.0.0.1:${port}`);
       console.log(
-        `MySQL match storage: ${database ? "connected" : "disabled"}`,
+        `MySQL match/benchmark storage: ${database ? "connected" : "disabled"}`,
       );
     });
   };

@@ -1,0 +1,234 @@
+.algorithm-page {
+  display: grid;
+  gap: 18px;
+  margin: 0 auto;
+  max-width: 1480px;
+  padding: 26px;
+}
+
+.algorithm-page .page-header {
+  align-items: end;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+}
+
+.algorithm-page .eyebrow {
+  color: #a36d25;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.algorithm-page h1,
+.algorithm-page h2 {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.algorithm-page h1 {
+  font-size: clamp(27px, 3vw, 38px);
+  letter-spacing: -0.035em;
+  margin: 5px 0 8px;
+}
+
+.algorithm-page h2 {
+  font-size: 21px;
+  margin: 0 0 14px;
+}
+
+.algorithm-page .lead {
+  color: #65706c;
+  line-height: 1.65;
+  margin: 0;
+  max-width: 780px;
+}
+
+.algorithm-page .review-chip {
+  background: #1b2925;
+  border-radius: 12px;
+  color: #f3f6f4;
+  display: grid;
+  flex: 0 0 auto;
+  gap: 4px;
+  padding: 12px 15px;
+}
+
+.algorithm-page .review-chip small {
+  color: #8fa099;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.algorithm-page .surface {
+  background: #fff;
+  border: 1px solid #dde3df;
+  border-radius: 15px;
+  padding: 19px;
+}
+
+.algorithm-page .snapshot-grid,
+.algorithm-page .concept-grid,
+.algorithm-page .stage-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+}
+
+.algorithm-page .snapshot-grid article,
+.algorithm-page .concept-card,
+.algorithm-page .stage-card {
+  background: #f5f7f5;
+  border: 1px solid #e4e9e6;
+  border-radius: 11px;
+  padding: 14px;
+}
+
+.algorithm-page article > span {
+  color: #77827e;
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 7px;
+  text-transform: uppercase;
+}
+
+.algorithm-page article > strong {
+  color: #26312d;
+  font-size: 16px;
+}
+
+.algorithm-page article > p,
+.algorithm-page li {
+  color: #65706c;
+  line-height: 1.55;
+}
+
+.algorithm-page article > p {
+  font-size: 12px;
+  margin: 7px 0 0;
+}
+
+.algorithm-page code {
+  color: #86591e;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.algorithm-page .pipeline {
+  counter-reset: pipeline;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(225px, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.algorithm-page .pipeline li {
+  background: #17231f;
+  border-radius: 11px;
+  color: #dce4e0;
+  min-height: 92px;
+  padding: 14px 14px 14px 46px;
+  position: relative;
+}
+
+.algorithm-page .pipeline li::before {
+  background: #dba04a;
+  border-radius: 50%;
+  color: #17231f;
+  content: counter(pipeline);
+  counter-increment: pipeline;
+  display: grid;
+  font-weight: 900;
+  height: 24px;
+  left: 13px;
+  place-items: center;
+  position: absolute;
+  top: 13px;
+  width: 24px;
+}
+
+.algorithm-page .table-wrap {
+  overflow-x: auto;
+}
+
+.algorithm-page table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.algorithm-page th,
+.algorithm-page td {
+  border-bottom: 1px solid #e6ebe8;
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 11px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.algorithm-page th {
+  color: #77827e;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.algorithm-page .enabled,
+.algorithm-page .conditional,
+.algorithm-page .disabled {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.algorithm-page .enabled {
+  background: #e2f2e9;
+  color: #246848;
+}
+
+.algorithm-page .conditional {
+  background: #fff0d7;
+  color: #8a5a18;
+}
+
+.algorithm-page .disabled {
+  background: #edf0ee;
+  color: #727d78;
+}
+
+.algorithm-page .formula {
+  background: #17231f;
+  border-radius: 10px;
+  color: #f1cb8f;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  margin-top: 12px;
+  padding: 13px;
+}
+
+.algorithm-page .note {
+  border-left: 3px solid #d99a3e;
+  color: #59645f;
+  line-height: 1.6;
+  margin: 0;
+  padding-left: 13px;
+}
+
+@media (max-width: 760px) {
+  .algorithm-page {
+    padding: 15px;
+  }
+
+  .algorithm-page .page-header {
+    align-items: start;
+    flex-direction: column;
+  }
+}

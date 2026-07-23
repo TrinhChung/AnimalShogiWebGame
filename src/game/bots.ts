@@ -1,4 +1,9 @@
-export type BotKind = "wasm-alpha-beta" | "wasm-random" | "native";
+import {
+  decodeProtocolAction,
+  encodeProtocolAction,
+} from "@/game/trajectory_contract.mjs";
+
+export type BotKind = "wasm-alpha-beta" | "wasm-random" | "native" | "human";
 
 export type BotDefinition = {
   id: string;
@@ -7,7 +12,23 @@ export type BotDefinition = {
   kind: BotKind;
   version: string;
   versionKey: string;
+  artifactDigest: string;
+  policyKey: string;
   depth?: number;
+};
+
+const wasmArtifactDigest = __QAS_WASM_SHA256__;
+const webBuildDigest = __QAS_WEB_BUILD_SHA256__;
+
+export const localHumanParticipant: BotDefinition = {
+  id: "local-human",
+  name: "Local Human",
+  description: "Local human input recorded without personal identifiers.",
+  kind: "human",
+  version: "human-input-v1",
+  versionKey: `human-input-v1:${webBuildDigest}`,
+  artifactDigest: webBuildDigest,
+  policyKey: "human-ui-input-v1",
 };
 
 export const packagedBots: BotDefinition[] = [
@@ -17,7 +38,9 @@ export const packagedBots: BotDefinition[] = [
     description: "Alpha-Beta độ sâu 2, phù hợp để xem nhanh nhiều nước.",
     kind: "wasm-alpha-beta",
     version: "depth-2",
-    versionKey: "web-v1:depth-2",
+    versionKey: `wasm-v1:${wasmArtifactDigest}:depth-2`,
+    artifactDigest: wasmArtifactDigest,
+    policyKey: "wasm-alpha-beta-v1",
     depth: 2,
   },
   {
@@ -26,7 +49,9 @@ export const packagedBots: BotDefinition[] = [
     description: "Alpha-Beta độ sâu 4, cân bằng tốc độ và sức chơi.",
     kind: "wasm-alpha-beta",
     version: "depth-4",
-    versionKey: "web-v1:depth-4",
+    versionKey: `wasm-v1:${wasmArtifactDigest}:depth-4`,
+    artifactDigest: wasmArtifactDigest,
+    policyKey: "wasm-alpha-beta-v1",
     depth: 4,
   },
   {
@@ -36,7 +61,9 @@ export const packagedBots: BotDefinition[] = [
       "Alpha-Beta độ sâu 8, ưu tiên sức chơi và có thể tính lâu hơn.",
     kind: "wasm-alpha-beta",
     version: "depth-8",
-    versionKey: "web-v1:depth-8",
+    versionKey: `wasm-v1:${wasmArtifactDigest}:depth-8`,
+    artifactDigest: wasmArtifactDigest,
+    policyKey: "wasm-alpha-beta-v1",
     depth: 8,
   },
   {
@@ -45,37 +72,10 @@ export const packagedBots: BotDefinition[] = [
     description: "Chọn ngẫu nhiên một nước hợp lệ với seed cố định.",
     kind: "wasm-random",
     version: "seeded-v1",
-    versionKey: "web-v1:seeded-v1",
+    versionKey: `web-random-v1:${webBuildDigest}`,
+    artifactDigest: webBuildDigest,
+    policyKey: "uniform-random-lcg-v1",
   },
 ];
 
-export const decodeProtocolAction = (actionIndex: number): [number, number] => {
-  if (!Number.isInteger(actionIndex) || actionIndex < 0 || actionIndex >= 240) {
-    throw new Error(`Invalid protocol action: ${actionIndex}`);
-  }
-
-  const source = Math.floor(actionIndex / 12);
-  const destination = actionIndex % 12;
-  return source < 12
-    ? [11 - source, 11 - destination]
-    : [source, 11 - destination];
-};
-
-export const encodeProtocolAction = ([source, destination]: [
-  number,
-  number,
-]): number => {
-  if (
-    !Number.isInteger(source) ||
-    !Number.isInteger(destination) ||
-    source < 0 ||
-    source >= 20 ||
-    destination < 0 ||
-    destination >= 12
-  ) {
-    throw new Error(`Invalid internal action: [${source}, ${destination}]`);
-  }
-
-  const externalSource = source < 12 ? 11 - source : source;
-  return externalSource * 12 + (11 - destination);
-};
+export { decodeProtocolAction, encodeProtocolAction };

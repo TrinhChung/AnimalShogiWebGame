@@ -1,0 +1,106 @@
+{
+  "bot": {
+    "id": "stage5-clean",
+    "name": "C++ Stage 5 Clean",
+    "description": "Accepted Stage 5 anchor",
+    "kind": "native",
+    "version": "stage5-clean",
+    "versionKey": "stage5-clean:76c3213168f542d2122ac9a14a0fd7592a6c1395e0c521e1f2e73a4acf38b0e5",
+    "artifactDigest": "76c3213168f542d2122ac9a14a0fd7592a6c1395e0c521e1f2e73a4acf38b0e5",
+    "policyKey": "native-json-protocol-v1"
+  },
+  "suite": {
+    "key": "focused-search-v1",
+    "name": "Focused search benchmark",
+    "description": "Representative fixed-depth search positions",
+    "schemaVersion": 1,
+    "metricCatalog": {
+      "nodes": "count",
+      "elapsedMs": "milliseconds",
+      "nps": "nodes_per_second",
+      "peakRssMb": "mebibytes"
+    }
+  },
+  "algorithm": {
+    "stageLabel": "Stage 5.0 Clean",
+    "searchFamily": "Negamax Alpha-Beta / PVS",
+    "sourceCommit": "5e096227947cf53c760a027318e26183863483f3",
+    "notes": "Example payload only. Replace every measurement with benchmark output before import.",
+    "features": [
+      "Iterative deepening",
+      "PVS",
+      "Aspiration",
+      "TT depth/age",
+      "Killer/history",
+      "L_eq trigger",
+      "Lineage LUT"
+    ],
+    "config": {
+      "profile": "contest_safe",
+      "tt_requested_mb": 256,
+      "l_eq_min_legal_count": 24,
+      "l_eq_min_depth": 4,
+      "l_eq_min_duplicate_ratio": 0.25
+    }
+  },
+  "run": {
+    "key": "20260722-stage5-clean-focused-d10",
+    "label": "Stage 5 Clean focused depth 10",
+    "status": "completed",
+    "source": "evaluation_pipeline",
+    "sourceCommit": "5e096227947cf53c760a027318e26183863483f3",
+    "startedAt": "2026-07-22T00:00:00Z",
+    "finishedAt": "2026-07-22T00:10:00Z",
+    "environment": {
+      "operating_system": "Windows 11",
+      "compiler": "MSVC Release",
+      "cpu": "replace-with-measured-cpu"
+    },
+    "settings": {
+      "depth": 10,
+      "repeat_count": 7,
+      "cold_tt": true
+    }
+  },
+  "cases": [
+    {
+      "positionKey": "initial",
+      "workloadClass": "general",
+      "depth": 10,
+      "timeLimitMs": 30000,
+      "repeatIndex": 1,
+      "completed": true,
+      "legalResult": true,
+      "bestMove": "p3:7->4",
+      "score": -212,
+      "nodes": 335244,
+      "elapsedMs": 1364.779,
+      "nps": 245638,
+      "ttHitRate": 0.155,
+      "averageBranching": 22.4,
+      "reducedBranching": 18.1,
+      "evalMs": 420.4,
+      "movegenMs": 521.7,
+      "orderingMs": 176.2,
+      "propagationMs": 103.5,
+      "leqMs": 22.1,
+      "peakRssMb": 197.6,
+      "metrics": {
+        "first_cutoff_rate": 0.798,
+        "root_hash_restored": true
+      }
+    }
+  ],
+  "findings": [
+    {
+      "category": "movegen",
+      "severity": "warning",
+      "title": "Move generation là component lớn nhất",
+      "evidence": {
+        "share_percent": 38.2,
+        "position": "initial"
+      },
+      "recommendation": "Profile pseudo generation và legal filtering trước khi thêm cache."
+    }
+  ]
+}

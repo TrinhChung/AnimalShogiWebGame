@@ -11,7 +11,7 @@ const store = useQuantumAnimalShogiStore();
       <p class="eyebrow">Quantum Animal Shogi</p>
       <h1>Web Solo</h1>
       <p class="subtitle">
-        Chọn tự do bot Alpha-Beta, Random hoặc các binary C++ Stage.
+        Chơi với bot hoặc tổ chức giải vô địch theo Elo tích lũy.
       </p>
     </header>
 
@@ -89,29 +89,24 @@ const store = useQuantumAnimalShogiStore();
     </div>
 
     <div v-else class="settings">
-      <div class="engine-grid">
-        <BotSelector
-          v-model="store.playerOneBotId"
-          label="Bot 1 · đi trước"
-          :disabled="store.isMachineMatchRunning"
-        />
-        <BotSelector
-          v-model="store.playerTwoBotId"
-          label="Bot 2 · đi sau"
-          :disabled="store.isMachineMatchRunning"
-        />
+      <div class="seed-note">
+        <strong>Giải đấu loại trực tiếp</strong>
+        <span>
+          Elo không reset. Hệ thống chốt 4 nhóm hạt giống khi mở giải và
+          ghép hạt giống cao nhất với thấp nhất ở mỗi vòng.
+        </span>
       </div>
 
       <label>
-        <span>Số ván lặp</span>
+        <span>Số ván mỗi cặp</span>
         <input
-          v-model.number="store.repeatCount"
+          v-model.number="store.gamesPerPairing"
           type="number"
           min="1"
-          max="500"
+          max="20"
           step="1"
           :disabled="store.isMachineMatchRunning"
-          data-testid="repeat-count"
+          data-testid="games-per-pairing"
         />
       </label>
 
@@ -132,11 +127,15 @@ const store = useQuantumAnimalShogiStore();
       <div class="button-row">
         <button
           class="primary"
-          :disabled="!store.isReady || store.isMachineMatchRunning"
+          :disabled="
+            !store.isReady ||
+            !store.persistenceAvailable ||
+            store.isMachineMatchRunning
+          "
           data-testid="start-engine-match"
           @click="store.startMachineMatch()"
         >
-          Bắt đầu
+          Bắt đầu giải
         </button>
         <button
           class="secondary"
@@ -146,6 +145,30 @@ const store = useQuantumAnimalShogiStore();
         >
           Dừng
         </button>
+      </div>
+
+      <div class="seed-table" data-testid="seed-table">
+        <div class="seed-table-header">
+          <strong>Bảng hạt giống</strong>
+          <span>{{ store.seedTableRows.length }} bot</span>
+        </div>
+        <div class="seed-list">
+          <div
+            v-for="entry in store.seedTableRows"
+            :key="entry.entryId"
+            class="seed-row"
+            :class="entry.status"
+          >
+            <span class="seed-number">#{{ entry.seed }}</span>
+            <span class="seed-bot">
+              <strong>{{ entry.name }}</strong>
+              <small>
+                Nhóm {{ entry.seedGroup }} · Elo chốt {{ entry.seedRating }}
+              </small>
+            </span>
+            <span class="seed-live">{{ entry.liveRating }}</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -161,15 +184,20 @@ const store = useQuantumAnimalShogiStore();
         }}</strong>
       </div>
       <div v-if="store.gameMode === 'engine-vs-engine'">
-        <span>Ván lặp</span>
+        <span>Vòng · cặp · ván</span>
         <strong data-testid="series-progress">
-          {{ store.currentMatchNumber }}/{{ store.repeatCount }} · xong
-          {{ store.completedMatchCount }}
+          {{ store.tournamentRound }} · {{ store.currentPairingNumber }}/{{
+            store.totalPairingsInRound
+          }}
+          · {{ store.currentMatchNumber }}/{{ store.gamesPerPairing }}
         </strong>
       </div>
       <div v-if="store.gameMode === 'engine-vs-engine'">
-        <span>Tỷ số Bot 1 – Bot 2</span>
-        <strong data-testid="series-score">{{ store.seriesScoreText }}</strong>
+        <span>Tỷ số cặp hiện tại</span>
+        <strong data-testid="series-score">
+          {{ store.currentPairingScoreOne }} –
+          {{ store.currentPairingScoreTwo }}
+        </strong>
       </div>
       <div v-else>
         <span>Điểm của bạn</span>
@@ -313,11 +341,93 @@ label {
   gap: 14px;
 }
 
-.engine-grid,
 .stats {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.seed-note {
+  background: #f5ead5;
+  border: 1px solid #e3cfa8;
+  border-radius: 10px;
+  color: #684c25;
+  display: grid;
+  font-size: 12px;
+  gap: 4px;
+  line-height: 1.45;
+  padding: 11px;
+}
+
+.seed-table {
+  border: 1px solid #d9d1c0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.seed-table-header,
+.seed-row {
+  align-items: center;
+  display: grid;
+}
+
+.seed-table-header {
+  background: #eee8dc;
+  grid-template-columns: 1fr auto;
+  padding: 9px 10px;
+}
+
+.seed-table-header span {
+  color: #7a7164;
+  font-size: 11px;
+}
+
+.seed-list {
+  max-height: 230px;
+  overflow-y: auto;
+}
+
+.seed-row {
+  border-top: 1px solid #eee8dc;
+  gap: 8px;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  padding: 8px 10px;
+}
+
+.seed-row:first-child {
+  border-top: 0;
+}
+
+.seed-row.eliminated {
+  opacity: 0.48;
+}
+
+.seed-row.champion {
+  background: #e4f2e8;
+}
+
+.seed-number,
+.seed-live {
+  color: #8b3f1f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.seed-bot {
+  display: grid;
+  min-width: 0;
+}
+
+.seed-bot strong,
+.seed-bot small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seed-bot small {
+  color: #7a7164;
+  font-size: 10px;
 }
 
 .stats {
@@ -387,9 +497,6 @@ input:disabled {
 }
 
 @media (max-width: 1100px) {
-  .engine-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 900px) {

@@ -25,7 +25,9 @@ const store = useQuantumAnimalShogiStore();
           class="stat-badge"
           data-testid="board-series-progress"
         >
-          Ván {{ store.currentMatchNumber }}/{{ store.repeatCount }}
+          Vòng {{ store.tournamentRound }} · cặp
+          {{ store.currentPairingNumber }}/{{ store.totalPairingsInRound }} · ván
+          {{ store.currentMatchNumber }}/{{ store.gamesPerPairing }}
         </div>
         <div class="stat-badge" :class="{ thinking: store.isThinking }">
           {{ store.currentPlayerLabel }}

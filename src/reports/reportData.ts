@@ -5,6 +5,8 @@ import reportSeedJson from "./reportSeed.json";
 export type VersionStatus = "champion" | "stable" | "legacy" | "baseline";
 export type CandidateResult = "win" | "draw" | "loss";
 export type TerminalType = "catch" | "try" | "draw";
+export type BenchmarkDataQuality = "verified" | "historical" | "missing";
+export type FindingSeverity = "info" | "warning" | "critical";
 
 export type ReportSummary = {
   total_games: number;
@@ -47,6 +49,77 @@ export type MatchReport = {
   complete: boolean;
 };
 
+export type BenchmarkComponent = {
+  key: string;
+  label: string;
+  elapsed_ms: number;
+  share_percent: number;
+};
+
+export type BenchmarkFinding = {
+  category: string;
+  severity: FindingSeverity;
+  title: string;
+  evidence: Record<string, unknown>;
+  recommendation: string;
+  source: "persisted" | "automatic";
+};
+
+export type BenchmarkWorkload = {
+  position_key: string;
+  workload_class: string;
+  case_count: number;
+  completed: boolean;
+  max_depth: number;
+  median_nodes: number;
+  median_elapsed_ms: number;
+  median_nps: number;
+  average_tt_hit_rate: number;
+};
+
+export type VersionBenchmarkReport = {
+  version_id: string;
+  display_name: string;
+  stage_label: string;
+  search_family: string;
+  source_commit: string | null;
+  algorithm_tags: string[];
+  algorithm_config: Record<string, unknown>;
+  data_quality: BenchmarkDataQuality;
+  suite_count: number;
+  run_count: number;
+  case_count: number;
+  completed_case_count: number;
+  latest_run_at: string | null;
+  median_nodes: number;
+  median_elapsed_ms: number;
+  median_nps: number;
+  max_completed_depth: number;
+  peak_rss_mb: number;
+  average_tt_hit_rate: number;
+  tt_hit_sample_count: number;
+  average_branching: number;
+  reduced_branching: number;
+  branching_pair_sample_count: number;
+  branching_reduction_percent: number;
+  component_breakdown: BenchmarkComponent[];
+  workloads: BenchmarkWorkload[];
+  findings: BenchmarkFinding[];
+  color: string;
+};
+
+export type BenchmarkReport = {
+  generated_at_utc: string;
+  summary: {
+    total_versions: number;
+    benchmarked_versions: number;
+    total_runs: number;
+    total_cases: number;
+    latest_run_at: string | null;
+  };
+  versions: VersionBenchmarkReport[];
+};
+
 export type ReportData = {
   schema_version: 1;
   is_seed_data: boolean;
@@ -54,10 +127,15 @@ export type ReportData = {
   summary: ReportSummary;
   versions: VersionReport[];
   games: MatchReport[];
+  benchmarks: BenchmarkReport;
 };
 
 export const reportSeed = reactive(reportSeedJson as ReportData);
 export const reportLoadState = reactive({
+  source: "seed" as "seed" | "mysql",
+  error: "",
+});
+export const benchmarkLoadState = reactive({
   source: "seed" as "seed" | "mysql",
   error: "",
 });
@@ -87,17 +165,28 @@ export const loadReportData = async (): Promise<void> => {
   loadPromise = (async () => {
     try {
       const response = await fetch("/api/report", { cache: "no-store" });
-      const data = (await response.json()) as ReportData & { error?: string };
+      const data = (await response.json()) as Partial<ReportData> & {
+        error?: string;
+      };
       if (!response.ok) {
         throw new Error(data.error ?? `HTTP ${response.status}`);
       }
+      const hasBenchmarkData = Boolean(
+        data.benchmarks && Array.isArray(data.benchmarks.versions),
+      );
       Object.assign(reportSeed, data);
       reportLoadState.source = "mysql";
       reportLoadState.error = "";
+      benchmarkLoadState.source = hasBenchmarkData ? "mysql" : "seed";
+      benchmarkLoadState.error = hasBenchmarkData
+        ? ""
+        : "API hiện tại chưa trả benchmark data; đang dùng seed tham khảo.";
     } catch (error) {
       reportLoadState.source = "seed";
       reportLoadState.error =
         error instanceof Error ? error.message : "Không thể tải báo cáo MySQL.";
+      benchmarkLoadState.source = "seed";
+      benchmarkLoadState.error = reportLoadState.error;
     }
   })();
   return loadPromise;

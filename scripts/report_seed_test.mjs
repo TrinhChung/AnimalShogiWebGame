@@ -12,6 +12,10 @@ assert.equal(reportSeed.schema_version, 1);
 assert.equal(reportSeed.is_seed_data, true);
 assert(reportSeed.versions.length > 0, "Expected at least one bot version");
 assert(reportSeed.games.length > 0, "Expected at least one historical game");
+assert(
+  reportSeed.benchmarks.versions.length > 0,
+  "Expected benchmark coverage metadata",
+);
 
 const versionIds = new Set(
   reportSeed.versions.map(({ version_id }) => version_id),
@@ -44,6 +48,49 @@ const aggregateGameCount = reportSeed.versions.reduce(
   0,
 );
 assert.equal(reportSeed.summary.total_games, aggregateGameCount / 2);
+
+assert.equal(
+  reportSeed.benchmarks.summary.total_versions,
+  reportSeed.benchmarks.versions.length,
+);
+assert.equal(
+  reportSeed.benchmarks.summary.benchmarked_versions,
+  reportSeed.benchmarks.versions.filter(({ case_count }) => case_count > 0)
+    .length,
+);
+assert.equal(
+  reportSeed.benchmarks.summary.total_cases,
+  reportSeed.benchmarks.versions.reduce(
+    (total, version) => total + version.case_count,
+    0,
+  ),
+);
+
+for (const version of reportSeed.benchmarks.versions) {
+  assert(
+    version.completed_case_count <= version.case_count,
+    `${version.version_id} completed benchmark count is invalid`,
+  );
+  const componentShare = version.component_breakdown.reduce(
+    (total, component) => total + component.share_percent,
+    0,
+  );
+  if (version.component_breakdown.length > 0) {
+    assert(
+      Math.abs(componentShare - 100) < 0.2,
+      `${version.version_id} component shares must add up to 100%`,
+    );
+  }
+  assert(
+    version.findings.every(
+      ({ severity }) =>
+        severity === "info" ||
+        severity === "warning" ||
+        severity === "critical",
+    ),
+    `${version.version_id} has an invalid finding severity`,
+  );
+}
 
 const gameIds = new Set();
 for (const game of reportSeed.games) {

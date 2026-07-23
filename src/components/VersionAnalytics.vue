@@ -16,6 +16,10 @@ const statusLabels: Record<VersionReport["status"], string> = {
 };
 
 const leader = computed(() => getVersion(reportSeed.summary.leader_version_id));
+const leaderBadge = computed(
+  () =>
+    leader.value.display_name.split("·").at(-1)?.trim().slice(0, 8) ?? "—",
+);
 const recentMatches = computed(() => reportSeed.games.slice(0, 5));
 const chartLabels = computed(() =>
   Array.from({ length: 6 }, (_, index) => {
@@ -230,7 +234,9 @@ const getMatchOutcome = (match: MatchReport): string => {
           <span class="live-dot">Active</span>
         </div>
         <div class="leader-identity">
-          <div class="version-orbit"><span>5.7</span></div>
+          <div class="version-orbit">
+            <span>{{ leaderBadge }}</span>
+          </div>
           <div>
             <p>Phiên bản mạnh nhất</p>
             <h2>{{ leader.display_name }}</h2>

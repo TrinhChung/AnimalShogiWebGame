@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import AppNavbar from "@/components/AppNavbar.vue";
+import BenchmarkIntelligence from "@/components/BenchmarkIntelligence.vue";
+import BotAlgorithmGuide from "@/components/BotAlgorithmGuide.vue";
+import CurrentStageAlgorithms from "@/components/CurrentStageAlgorithms.vue";
 import GameBoard from "@/components/GameBoard.vue";
 import MatchHistory from "@/components/MatchHistory.vue";
 import SoloControlPanel from "@/components/SoloControlPanel.vue";
@@ -8,9 +11,22 @@ import VersionAnalytics from "@/components/VersionAnalytics.vue";
 import { loadReportData } from "@/reports/reportData";
 import { useQuantumAnimalShogiStore } from "@/stores/QuantumAnimalShogiStore";
 
-type AppPage = "analytics" | "history" | "playground";
+type AppPage =
+  | "analytics"
+  | "benchmarks"
+  | "stage"
+  | "algorithms"
+  | "history"
+  | "playground";
 
-const appPages: AppPage[] = ["analytics", "history", "playground"];
+const appPages: AppPage[] = [
+  "analytics",
+  "benchmarks",
+  "stage",
+  "algorithms",
+  "history",
+  "playground",
+];
 const store = useQuantumAnimalShogiStore();
 const initialized = ref(false);
 
@@ -43,6 +59,9 @@ onBeforeUnmount(() => {
     <AppNavbar :active-page="activePage" />
     <section class="page-content">
       <VersionAnalytics v-if="activePage === 'analytics'" />
+      <BenchmarkIntelligence v-else-if="activePage === 'benchmarks'" />
+      <CurrentStageAlgorithms v-else-if="activePage === 'stage'" />
+      <BotAlgorithmGuide v-else-if="activePage === 'algorithms'" />
       <MatchHistory v-else-if="activePage === 'history'" />
       <main v-else class="playground-layout">
         <template v-if="initialized">

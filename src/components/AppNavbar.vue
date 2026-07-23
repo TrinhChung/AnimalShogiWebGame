@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { reportLoadState } from "@/reports/reportData";
 
-type AppPage = "analytics" | "history" | "playground";
+type AppPage =
+  | "analytics"
+  | "benchmarks"
+  | "stage"
+  | "algorithms"
+  | "history"
+  | "playground";
 
 defineProps<{
   activePage: AppPage;
@@ -9,6 +15,17 @@ defineProps<{
 
 const navigationItems: { id: AppPage; label: string; description: string }[] = [
   { id: "analytics", label: "Thống kê", description: "Tổng quan phiên bản" },
+  {
+    id: "benchmarks",
+    label: "Benchmark",
+    description: "Hiệu quả thuật toán",
+  },
+  { id: "stage", label: "Stage hiện tại", description: "Cấu hình thuật toán" },
+  {
+    id: "algorithms",
+    label: "Thuật toán",
+    description: "Giải thích bot cơ bản",
+  },
   { id: "history", label: "Lịch sử", description: "Tra cứu từng trận" },
   { id: "playground", label: "Phòng đấu", description: "Chạy bot trực tiếp" },
 ];
@@ -42,6 +59,30 @@ const navigationItems: { id: AppPage; label: string; description: string }[] = [
           aria-hidden="true"
         >
           <path d="M4 19V9m6 10V5m6 14v-7m4 7H2" />
+        </svg>
+        <svg
+          v-else-if="item.id === 'benchmarks'"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path d="M4 18h16M6 15l3-5 3 2 4-7 2 3M6 4v14" />
+        </svg>
+        <svg
+          v-else-if="item.id === 'stage'"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path d="M5 19V5h14v14H5Zm4-10h6m-6 4h6" />
+        </svg>
+        <svg
+          v-else-if="item.id === 'algorithms'"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 3v4m0 10v4M3 12h4m10 0h4M8 8l-3-3m11 3 3-3M8 16l-3 3m11-3 3 3"
+          />
+          <circle cx="12" cy="12" r="4" />
         </svg>
         <svg
           v-else-if="item.id === 'history'"
@@ -289,7 +330,7 @@ nav {
   nav {
     display: grid;
     gap: 5px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .nav-item {

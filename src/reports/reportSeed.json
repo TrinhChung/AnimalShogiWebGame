@@ -71,6 +71,373 @@
       "elo_trend": [1452, 1439, 1425, 1411, 1399, 1388]
     }
   ],
+  "benchmarks": {
+    "generated_at_utc": "2026-07-22T00:00:00Z",
+    "summary": {
+      "total_versions": 4,
+      "benchmarked_versions": 2,
+      "total_runs": 2,
+      "total_cases": 315,
+      "latest_run_at": "2026-07-10T15:58:50Z"
+    },
+    "versions": [
+      {
+        "version_id": "stage5-clean",
+        "display_name": "Stage 5.0 Clean",
+        "stage_label": "Stage 5.0 Clean",
+        "search_family": "Negamax Alpha-Beta / PVS",
+        "source_commit": "5e096227947cf53c760a027318e26183863483f3",
+        "algorithm_tags": [
+          "Iterative deepening",
+          "PVS",
+          "Aspiration",
+          "TT depth/age",
+          "Killer/history",
+          "L_eq trigger",
+          "Lineage LUT"
+        ],
+        "algorithm_config": {
+          "profile": "contest_safe",
+          "tt_requested_mb": 256,
+          "l_eq_trigger": "24/4/0.25"
+        },
+        "data_quality": "verified",
+        "suite_count": 1,
+        "run_count": 1,
+        "case_count": 35,
+        "completed_case_count": 35,
+        "latest_run_at": "2026-07-10T15:58:50Z",
+        "median_nodes": 437073,
+        "median_elapsed_ms": 1224.2,
+        "median_nps": 357040,
+        "max_completed_depth": 10,
+        "peak_rss_mb": 197.6,
+        "average_tt_hit_rate": 0,
+        "tt_hit_sample_count": 0,
+        "average_branching": 0,
+        "reduced_branching": 0,
+        "branching_pair_sample_count": 0,
+        "branching_reduction_percent": 0,
+        "component_breakdown": [
+          {
+            "key": "other",
+            "label": "Rules, movegen và phần khác",
+            "elapsed_ms": 7652.9,
+            "share_percent": 66.7
+          },
+          {
+            "key": "evaluation",
+            "label": "Lượng giá",
+            "elapsed_ms": 3826,
+            "share_percent": 33.3
+          }
+        ],
+        "workloads": [
+          {
+            "position_key": "duplicate_hands",
+            "workload_class": "branching-stress",
+            "case_count": 7,
+            "completed": true,
+            "max_depth": 10,
+            "median_nodes": 1323724,
+            "median_elapsed_ms": 7136.4,
+            "median_nps": 185493,
+            "average_tt_hit_rate": 0
+          },
+          {
+            "position_key": "initial",
+            "workload_class": "general",
+            "case_count": 7,
+            "completed": true,
+            "max_depth": 10,
+            "median_nodes": 335244,
+            "median_elapsed_ms": 1364.8,
+            "median_nps": 245638,
+            "average_tt_hit_rate": 0
+          },
+          {
+            "position_key": "high_uncertainty_midgame",
+            "workload_class": "uncertainty",
+            "case_count": 7,
+            "completed": true,
+            "max_depth": 10,
+            "median_nodes": 486114,
+            "median_elapsed_ms": 1330.4,
+            "median_nps": 365381,
+            "average_tt_hit_rate": 0
+          },
+          {
+            "position_key": "many_hands",
+            "workload_class": "hand-heavy",
+            "case_count": 7,
+            "completed": true,
+            "max_depth": 10,
+            "median_nodes": 437073,
+            "median_elapsed_ms": 1224.2,
+            "median_nps": 357040,
+            "average_tt_hit_rate": 0
+          },
+          {
+            "position_key": "low_uncertainty_midgame",
+            "workload_class": "general",
+            "case_count": 7,
+            "completed": true,
+            "max_depth": 10,
+            "median_nodes": 174686,
+            "median_elapsed_ms": 423.1,
+            "median_nps": 412824,
+            "average_tt_hit_rate": 0
+          }
+        ],
+        "findings": [
+          {
+            "category": "movegen",
+            "severity": "warning",
+            "title": "Move generation là hướng tối ưu kế tiếp",
+            "evidence": {
+              "duplicate_hands_nodes": 1323724,
+              "source": "reports/stage4/summary.md"
+            },
+            "recommendation": "Profile pseudo-move generation và legal filtering theo workload; chỉ nhận tối ưu khi node, move và score giữ nguyên.",
+            "source": "persisted"
+          },
+          {
+            "category": "coverage",
+            "severity": "info",
+            "title": "Chưa có báo cáo hiệu năng Stage 5 riêng",
+            "evidence": {
+              "stage5_profile_available": true,
+              "checked_in_report": false
+            },
+            "recommendation": "Lưu output qas_stage5_profile thành benchmark run trong MySQL để tách lợi ích Lineage LUT khỏi tối ưu Stage 4.",
+            "source": "persisted"
+          }
+        ],
+        "color": "#5c9d7e"
+      },
+      {
+        "version_id": "legacy-stage3.5",
+        "display_name": "Legacy Stage 3.5",
+        "stage_label": "Stage 3.5",
+        "search_family": "Negamax Alpha-Beta / PVS",
+        "source_commit": null,
+        "algorithm_tags": [
+          "Iterative deepening",
+          "PVS",
+          "Aspiration",
+          "TT",
+          "Killer/history",
+          "L_eq trigger"
+        ],
+        "algorithm_config": {
+          "tt_requested_mb": 256,
+          "l_eq_trigger": "24/4/0.25"
+        },
+        "data_quality": "historical",
+        "suite_count": 1,
+        "run_count": 1,
+        "case_count": 280,
+        "completed_case_count": 265,
+        "latest_run_at": "2026-07-08T00:00:00Z",
+        "median_nodes": 151977,
+        "median_elapsed_ms": 667.8,
+        "median_nps": 192000,
+        "max_completed_depth": 12,
+        "peak_rss_mb": 198.4,
+        "average_tt_hit_rate": 16.2,
+        "tt_hit_sample_count": 265,
+        "average_branching": 0,
+        "reduced_branching": 0,
+        "branching_pair_sample_count": 0,
+        "branching_reduction_percent": 0,
+        "component_breakdown": [
+          {
+            "key": "movegen",
+            "label": "Sinh nước",
+            "elapsed_ms": 137388,
+            "share_percent": 66.3
+          },
+          {
+            "key": "ordering",
+            "label": "Xếp nước",
+            "elapsed_ms": 48887,
+            "share_percent": 23.6
+          },
+          {
+            "key": "evaluation",
+            "label": "Lượng giá",
+            "elapsed_ms": 17686,
+            "share_percent": 8.5
+          },
+          {
+            "key": "l_eq",
+            "label": "L_eq",
+            "elapsed_ms": 2722,
+            "share_percent": 1.3
+          },
+          {
+            "key": "other",
+            "label": "Khác",
+            "elapsed_ms": 622,
+            "share_percent": 0.3
+          }
+        ],
+        "workloads": [
+          {
+            "position_key": "duplicate_hands",
+            "workload_class": "branching-stress",
+            "case_count": 28,
+            "completed": false,
+            "max_depth": 10,
+            "median_nodes": 987481,
+            "median_elapsed_ms": 8729.9,
+            "median_nps": 113115,
+            "average_tt_hit_rate": 12.5
+          },
+          {
+            "position_key": "initial",
+            "workload_class": "general",
+            "case_count": 28,
+            "completed": false,
+            "max_depth": 12,
+            "median_nodes": 3982854,
+            "median_elapsed_ms": 27940,
+            "median_nps": 142550,
+            "average_tt_hit_rate": 12.3
+          },
+          {
+            "position_key": "high_uncertainty_midgame",
+            "workload_class": "uncertainty",
+            "case_count": 28,
+            "completed": true,
+            "max_depth": 12,
+            "median_nodes": 3953846,
+            "median_elapsed_ms": 22878.6,
+            "median_nps": 172818,
+            "average_tt_hit_rate": 18
+          },
+          {
+            "position_key": "low_uncertainty_midgame",
+            "workload_class": "general",
+            "case_count": 28,
+            "completed": true,
+            "max_depth": 12,
+            "median_nodes": 2167253,
+            "median_elapsed_ms": 10862.9,
+            "median_nps": 199509,
+            "average_tt_hit_rate": 19
+          }
+        ],
+        "findings": [
+          {
+            "category": "movegen",
+            "severity": "critical",
+            "title": "Sinh nước chiếm 66.3% profile lịch sử",
+            "evidence": {
+              "movegen_ms": 137388,
+              "share_percent": 66.3
+            },
+            "recommendation": "Tách pseudo generation, legal filtering, apply/undo và propagation để tránh tối ưu nhầm phần inclusive timing.",
+            "source": "persisted"
+          },
+          {
+            "category": "deadline",
+            "severity": "warning",
+            "title": "duplicate_hands không hoàn tất depth 11",
+            "evidence": {
+              "stable_depth": 10,
+              "target_depth": 11
+            },
+            "recommendation": "Ưu tiên giảm branching và cải thiện cutoff rank trên duplicate_hands trước khi tăng RAM hoặc mở full quotient.",
+            "source": "persisted"
+          }
+        ],
+        "color": "#8a72bf"
+      },
+      {
+        "version_id": "legacy-stage5.7",
+        "display_name": "Stage 5.7",
+        "stage_label": "Legacy 5.7",
+        "search_family": "Chưa xác minh từ source",
+        "source_commit": null,
+        "algorithm_tags": [],
+        "algorithm_config": {},
+        "data_quality": "missing",
+        "suite_count": 0,
+        "run_count": 0,
+        "case_count": 0,
+        "completed_case_count": 0,
+        "latest_run_at": null,
+        "median_nodes": 0,
+        "median_elapsed_ms": 0,
+        "median_nps": 0,
+        "max_completed_depth": 0,
+        "peak_rss_mb": 0,
+        "average_tt_hit_rate": 0,
+        "tt_hit_sample_count": 0,
+        "average_branching": 0,
+        "reduced_branching": 0,
+        "branching_pair_sample_count": 0,
+        "branching_reduction_percent": 0,
+        "component_breakdown": [],
+        "workloads": [],
+        "findings": [
+          {
+            "category": "coverage",
+            "severity": "info",
+            "title": "Chưa có benchmark chuẩn hóa",
+            "evidence": {
+              "artifact_only": true
+            },
+            "recommendation": "Chạy artifact trên cùng corpus, depth/time limit và môi trường với champion trước khi kết luận hiệu quả Stage 5.7.",
+            "source": "automatic"
+          }
+        ],
+        "color": "#dca047"
+      },
+      {
+        "version_id": "legacy-stage5",
+        "display_name": "Legacy Stage 5",
+        "stage_label": "Legacy 5.0",
+        "search_family": "Chưa xác minh từ source",
+        "source_commit": null,
+        "algorithm_tags": [],
+        "algorithm_config": {},
+        "data_quality": "missing",
+        "suite_count": 0,
+        "run_count": 0,
+        "case_count": 0,
+        "completed_case_count": 0,
+        "latest_run_at": null,
+        "median_nodes": 0,
+        "median_elapsed_ms": 0,
+        "median_nps": 0,
+        "max_completed_depth": 0,
+        "peak_rss_mb": 0,
+        "average_tt_hit_rate": 0,
+        "tt_hit_sample_count": 0,
+        "average_branching": 0,
+        "reduced_branching": 0,
+        "branching_pair_sample_count": 0,
+        "branching_reduction_percent": 0,
+        "component_breakdown": [],
+        "workloads": [],
+        "findings": [
+          {
+            "category": "coverage",
+            "severity": "info",
+            "title": "Chưa có benchmark chuẩn hóa",
+            "evidence": {
+              "artifact_only": true
+            },
+            "recommendation": "Import benchmark có source/config provenance; không suy đoán thuật toán từ tên binary.",
+            "source": "automatic"
+          }
+        ],
+        "color": "#668fc5"
+      }
+    ]
+  },
   "games": [
     {
       "game_id": "game-20260721-0142",
